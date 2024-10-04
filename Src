@@ -1,0 +1,62 @@
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.*;
+import java.net.*;   // it's for take date means news from net and use api
+
+public class NewsApp {
+    private static final String apikey = "0571636813e345b69d26ebdb44b44845";
+    private static final String baseurl = "https://newsapi.org/v2/everything?"; // using 'everything' endpoint for searching news by keyword
+
+    public static void main(String[] args) {
+
+        // it is worked by internet so we use exception handling bcoz it have chance to get error by internet
+
+        try {
+
+            Scanner scanner = new Scanner(System.in);
+            System.out.println("Enter a keyword to search news (EX: Football, Cristiano Ronaldo):"); // prompt user to enter a search keyword
+            String keyword = scanner.nextLine().toLowerCase(); // convert input to lowercase for consistency
+
+            // Build the API URL using the entered keyword. We use 'q' parameter to search for news articles with the keyword
+
+            String apiurl = baseurl + "q=" + URLEncoder.encode(keyword, "UTF-8") + "&language=en&apikey=" + apikey;
+
+            //http url we used in api ...http give our search output in api so we use http
+
+            // Open the connection to the URL
+            HttpURLConnection con = (HttpURLConnection) new URL(apiurl).openConnection();
+            // Open the connection to the URL
+            con.setRequestMethod("GET"); // Use the GET method to retrieve information
+
+            // Check the response code
+            int responseCode = con.getResponseCode();
+            if (responseCode != 200) {
+                System.out.println("Error: Failed to fetch news. Response code: " + responseCode); // Handle non-200 response codes
+                return;
+            }
+
+            BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
+            // we pass the above connection for input stream here//
+
+            String line, json = "";
+            //JSON lines is a format that balance human readability and convenience with machine readability and operability//
+
+            // Read the response from the API
+            while ((line = reader.readLine()) != null) {
+                json += line; // append each line to the json string
+            }
+            reader.close(); // close the reader
+
+            int index = 0;
+            // Loop through the JSON response and find all news titles
+            while ((index = json.indexOf("\"title\":\"", index)) != -1) {
+                int endindex = json.indexOf("\"", index + 9); // find the end of the title
+                System.out.println("Title: " + json.substring(index + 9, endindex)); // print the title
+                index = endindex + 1; // move the index forward
+            }
+
+        } catch (Exception e) {
+            System.out.println("Error: " + e.getMessage()); // catch and display any errors
+        }
+    }
+}
