@@ -14,8 +14,8 @@ public class NewsApp {
         try {
 
             Scanner scanner = new Scanner(System.in);
-            System.out.println("Enter a keyword to search news (EX: Football, Cristiano Ronaldo):"); // prompt user to enter a search keyword
-            String keyword = scanner.nextLine().toLowerCase(); // convert input to lowercase for consistency
+            System.out.println("Enter a keyword to search news (EX:Sports,Business,Technology,Cars,Actors):");        // prompt user to enter a search keyword anything
+            String keyword = scanner.nextLine().toLowerCase();                                                  // convert input to lowercase for consistency
 
             // Build the API URL using the entered keyword. We use 'q' parameter to search for news articles with the keyword
 
@@ -24,39 +24,49 @@ public class NewsApp {
             //http url we used in api ...http give our search output in api so we use http
 
             // Open the connection to the URL
+
             HttpURLConnection con = (HttpURLConnection) new URL(apiurl).openConnection();
+
             // Open the connection to the URL
+
             con.setRequestMethod("GET"); // Use the GET method to retrieve information
 
             // Check the response code
+
             int responseCode = con.getResponseCode();
             if (responseCode != 200) {
-                System.out.println("Error: Failed to fetch news. Response code: " + responseCode); // Handle non-200 response codes
+                System.out.println("Error: Failed to fetch news. Response code: " + responseCode);                            // Handle non-200 response codes
                 return;
             }
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
+
             // we pass the above connection for input stream here//
 
             String line, json = "";
+
             //JSON lines is a format that balance human readability and convenience with machine readability and operability//
 
             // Read the response from the API
+
             while ((line = reader.readLine()) != null) {
                 json += line; // append each line to the json string
             }
             reader.close(); // close the reader
 
             int index = 0;
+
             // Loop through the JSON response and find all news titles
+
             while ((index = json.indexOf("\"title\":\"", index)) != -1) {
-                int endindex = json.indexOf("\"", index + 9); // find the end of the title
+                int endindex = json.indexOf("\"", index + 9);                                 // find the end of the title
                 System.out.println("Title: " + json.substring(index + 9, endindex)); // print the title
-                index = endindex + 1; // move the index forward
+                index = endindex + 1;                                                                     // move the index forward
             }
 
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage()); // catch and display any errors
+            System.out.println("Error: " + e.getMessage());                                           // catch and display any errors
         }
     }
 }
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
