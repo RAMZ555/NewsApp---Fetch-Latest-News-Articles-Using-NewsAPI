@@ -26,3 +26,48 @@ This project demonstrates how to work with REST APIs in Java, handle HTTP connec
 - Java JDK (version 8 or later)
 - Internet connection
 - NewsAPI key (you can sign up for free at [https://newsapi.org/register](https://newsapi.org/register))
+
+- ## Installation
+
+1. Clone the repository:
+    ```bash
+    git clone https://github.com/your-username/NewsApp.git
+    ```
+
+2. Navigate to the project directory:
+    ```bash
+    cd NewsApp
+    ```
+
+3. Open the project in your preferred Java IDE (e.g., IntelliJ IDEA, Eclipse).
+
+4. Replace the `apikey` in the `NewsApp.java` file with your own NewsAPI key. You can get a key by signing up on the [NewsAPI website](https://newsapi.org/register).
+
+5. Compile and run the project:
+    ```bash
+    javac NewsApp.java
+    java NewsApp
+    ```
+
+6. The application will prompt you to enter a keyword (e.g., "football", "Cristiano Ronaldo"). Based on your input, the app will fetch the latest news articles and display the titles.
+   
+
+- ## Usage
+
+1. Run the application:
+    ```bash
+    java NewsApp
+    ```
+
+2. Enter a keyword related to the news you want to search for, such as:
+    - **"Football"** to get football-related news.
+    - **"Cristiano Ronaldo"** to get news about Cristiano Ronaldo.
+    - **"Technology"** to get technology-related news.
+
+3. The application will fetch news articles and display their titles based on your input.
+
+
+- License: This project is licensed under the MIT License.
+
+Contact : For any questions, feedback, or support inquiries, please contact sriramsubramaniyan555@gmail.com. We'd love to hear from you!
+
