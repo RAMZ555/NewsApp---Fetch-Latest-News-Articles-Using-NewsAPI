@@ -1,71 +1,234 @@
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.util.*;
-import java.net.*;   // it's for take date means news from net and use api
+package com.newsapp;
 
-public class NewsApp {
-    private static final String apikey = "0571636813e345b69d26ebdb44b44845";
-    private static final String baseurl = "https://newsapi.org/v2/everything?"; // using 'everything' endpoint for searching news by keyword
+import java.io.*;
+import java.net.*;
+import java.util.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
+public class NewsFetcher {
+    private static final String API_KEY = "0571636813e345b69d26ebdb44b44845";
+    private static final String BASE_URL = "https://newsapi.org/v2/everything?";
+    private static final Map<String, NewsCache> cache = new HashMap<>();
+    private static final int CACHE_DURATION_MINUTES = 30;
+    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
 
-        // it is worked by internet so we use exception handling bcoz it have chance to get error by internet
+        while (true) {
+            System.out.println("\n=== News Fetcher Application ===");
+            System.out.println("1. Search news by keyword");
+            System.out.println("2. View search history");
+            System.out.println("3. Exit");
+            System.out.print("Enter your choice: ");
+
+            try {
+                int choice = scanner.nextInt();
+                scanner.nextLine();
+
+                switch (choice) {
+                    case 1:
+                        searchNews(scanner);
+                        break;
+                    case 2:
+                        displaySearchHistory();
+                        break;
+                    case 3:
+                        System.out.println("Exiting application...");
+                        scanner.close();
+                        return;
+                    default:
+                        System.out.println("Invalid choice. Please try again.");
+                }
+            } catch (Exception e) {
+                System.err.println("Error: " + e.getMessage());
+                scanner.nextLine();
+            }
+        }
+    }
+
+    private static void searchNews(Scanner scanner) {
+        System.out.print("Enter a keyword to search news (e.g., Sports, Business, Technology): ");
+        String keyword = scanner.nextLine().trim().toLowerCase();
+
+        if (keyword.isEmpty()) {
+            System.out.println("Error: Keyword cannot be empty.");
+            return;
+        }
+
+        if (cache.containsKey(keyword)) {
+            NewsCache cachedResult = cache.get(keyword);
+            if (!cachedResult.isExpired()) {
+                System.out.println("\n=== Cached Results (from " + cachedResult.getTimestamp() + ") ===");
+                displayNews(cachedResult.getNewsData());
+                return;
+            }
+        }
 
         try {
+            String apiUrl = BASE_URL + "q=" + URLEncoder.encode(keyword, "UTF-8") +
+                    "&language=en&sortBy=publishedAt&pageSize=10&apikey=" + API_KEY;
 
-            Scanner scanner = new Scanner(System.in);
-            System.out.println("Enter a keyword to search news (EX:Sports,Business,Technology,Cars,Actors):");        // prompt user to enter a search keyword anything
-            String keyword = scanner.nextLine().toLowerCase();                                                  // convert input to lowercase for consistency
+            HttpURLConnection connection = (HttpURLConnection) new URL(apiUrl).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setRequestProperty("User-Agent", "NewsFetcher/1.0");
 
-            // Build the API URL using the entered keyword. We use 'q' parameter to search for news articles with the keyword
-
-            String apiurl = baseurl + "q=" + URLEncoder.encode(keyword, "UTF-8") + "&language=en&apikey=" + apikey;
-
-            //http url we used in api ...http give our search output in api so we use http
-
-            // Open the connection to the URL
-
-            HttpURLConnection con = (HttpURLConnection) new URL(apiurl).openConnection();
-
-            // Open the connection to the URL
-
-            con.setRequestMethod("GET"); // Use the GET method to retrieve information
-
-            // Check the response code
-
-            int responseCode = con.getResponseCode();
+            int responseCode = connection.getResponseCode();
             if (responseCode != 200) {
-                System.out.println("Error: Failed to fetch news. Response code: " + responseCode);                            // Handle non-200 response codes
+                handleErrorResponse(connection, responseCode);
                 return;
             }
 
-            BufferedReader reader = new BufferedReader(new InputStreamReader(con.getInputStream()));
-
-            // we pass the above connection for input stream here//
-
-            String line, json = "";
-
-            //JSON lines is a format that balance human readability and convenience with machine readability and operability//
-
-            // Read the response from the API
-
-            while ((line = reader.readLine()) != null) {
-                json += line; // append each line to the json string
+            StringBuilder response = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    response.append(line);
+                }
             }
-            reader.close(); // close the reader
 
-            int index = 0;
-
-            // Loop through the JSON response and find all news titles
-
-            while ((index = json.indexOf("\"title\":\"", index)) != -1) {
-                int endindex = json.indexOf("\"", index + 9);                                 // find the end of the title
-                System.out.println("Title: " + json.substring(index + 9, endindex)); // print the title
-                index = endindex + 1;                                                                     // move the index forward
+            List<NewsArticle> newsList = parseJsonResponse(response.toString());
+            if (newsList.isEmpty()) {
+                System.out.println("No news found for keyword: " + keyword);
+                return;
             }
+
+            cache.put(keyword, new NewsCache(newsList));
+            System.out.println("\n=== Latest News for '" + keyword + "' ===");
+            displayNews(newsList);
+            logSearch(keyword, newsList.size());
 
         } catch (Exception e) {
-            System.out.println("Error: " + e.getMessage());                                           // catch and display any errors
+            System.err.println("Error fetching news: " + e.getMessage());
+        }
+    }
+
+    private static List<NewsArticle> parseJsonResponse(String jsonResponse) {
+        List<NewsArticle> newsList = new ArrayList<>();
+        String[] articles = jsonResponse.split("\"articles\":\\[")[1].split("}]")[0].split("},\\{");
+
+        for (String article : articles) {
+            String title = extractJsonValue(article, "title");
+            String description = extractJsonValue(article, "description");
+            String url = extractJsonValue(article, "url");
+            String publishedAt = extractJsonValue(article, "publishedAt");
+            String source = extractJsonValue(article.split("\"source\":\\{")[1], "name");
+
+            newsList.add(new NewsArticle(title, description, url, publishedAt, source));
+        }
+        return newsList;
+    }
+
+    private static String extractJsonValue(String json, String key) {
+        try {
+            String[] parts = json.split("\"" + key + "\":");
+            if (parts.length < 2) return "N/A";
+
+            String valuePart = parts[1].split(",")[0];
+            if (valuePart.startsWith("\"")) {
+                return valuePart.substring(1, valuePart.endsWith("\"") ? valuePart.length()-1 : valuePart.length());
+            }
+            return valuePart;
+        } catch (Exception e) {
+            return "N/A";
+        }
+    }
+
+    private static void displayNews(List<NewsArticle> newsList) {
+        for (int i = 0; i < newsList.size(); i++) {
+            NewsArticle article = newsList.get(i);
+            System.out.println("\n[" + (i+1) + "] " + article.getTitle());
+            System.out.println("Source: " + article.getSource());
+            System.out.println("Published: " + article.getFormattedDate());
+            System.out.println("Description: " + article.getDescription());
+            System.out.println("URL: " + article.getUrl());
+        }
+        System.out.println("\nTotal articles: " + newsList.size());
+    }
+
+    private static void handleErrorResponse(HttpURLConnection connection, int responseCode) throws IOException {
+        try (BufferedReader errorReader = new BufferedReader(new InputStreamReader(connection.getErrorStream()))) {
+            String errorLine;
+            StringBuilder errorResponse = new StringBuilder();
+            while ((errorLine = errorReader.readLine()) != null) {
+                errorResponse.append(errorLine);
+            }
+            System.err.println("API Error: " + errorResponse.toString());
+        }
+    }
+
+    private static void logSearch(String keyword, int resultCount) {
+        try (FileWriter writer = new FileWriter("search_history.log", true)) {
+            writer.write(LocalDateTime.now().format(DATE_FORMATTER) + " | Search: " + keyword +
+                    " | Results: " + resultCount + "\n");
+        } catch (IOException e) {
+            System.err.println("Warning: Could not log search history.");
+        }
+    }
+
+    private static void displaySearchHistory() {
+        try (BufferedReader reader = new BufferedReader(new FileReader("search_history.log"))) {
+            String line;
+            System.out.println("\n=== Search History ===");
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (IOException e) {
+            System.out.println("No search history available yet.");
+        }
+    }
+}
+
+class NewsCache {
+    private final List<NewsArticle> newsData;
+    private final LocalDateTime timestamp;
+    private static final long CACHE_DURATION_MINUTES = 30;
+
+    public NewsCache(List<NewsArticle> newsData) {
+        this.newsData = newsData;
+        this.timestamp = LocalDateTime.now();
+    }
+
+    public List<NewsArticle> getNewsData() {
+        return newsData;
+    }
+
+    public String getTimestamp() {
+        return timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+    }
+
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(timestamp.plusMinutes(CACHE_DURATION_MINUTES));
+    }
+}
+
+class NewsArticle {
+    private final String title;
+    private final String description;
+    private final String url;
+    private final String publishedAt;
+    private final String source;
+
+    public NewsArticle(String title, String description, String url, String publishedAt, String source) {
+        this.title = title;
+        this.description = description;
+        this.url = url;
+        this.publishedAt = publishedAt;
+        this.source = source;
+    }
+
+    public String getTitle() { return title; }
+    public String getDescription() { return description; }
+    public String getUrl() { return url; }
+    public String getSource() { return source; }
+
+    public String getFormattedDate() {
+        try {
+            LocalDateTime date = LocalDateTime.parse(publishedAt.substring(0, 19));
+            return date.format(DateTimeFormatter.ofPattern("MMM dd, yyyy hh:mm a"));
+        } catch (Exception e) {
+            return publishedAt;
         }
     }
 }
