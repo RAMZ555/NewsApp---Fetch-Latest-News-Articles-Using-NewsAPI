@@ -65,6 +65,47 @@ Edit
 - Internet connection
 - NewsAPI key (free at [https://newsapi.org](https://newsapi.org))
 
+  ## 🖥 Sample Output
+
+=== News Fetcher Application ===
+1. Search news by keyword
+2. View search history
+3. Exit
+Enter your choice: 1
+
+Enter a keyword to search news (e.g., Sports, Business, Technology): technology
+Enter category (optional): technology
+Enter country code (e.g., us, in) (optional): us
+
+=== News Results (Page 1) ===
+
+[1] Apple Announces New M3 MacBook Pro Models
+Source: The Verge
+Published: Jul 08, 2025 08:15 AM
+Description: Apple introduced its new M3-powered MacBooks at a press event today...
+URL: https://www.theverge.com/apple-m3-macbook
+
+[2] Google AI Upgrade Surpasses GPT-4
+Source: TechCrunch
+Published: Jul 07, 2025 11:45 PM
+Description: Google’s Gemini AI shows dramatic improvements over GPT-4...
+URL: https://techcrunch.com/google-gemini-ai
+
+...
+
+Total articles: 10
+
+Enter article number to open in browser (0 to skip): 2
+✅ Opening in browser...
+
+Do you want to see next page? (y/n): y
+
+## 🧾 Sample History Output
+
+=== Search History ===
+2025-07-08 10:41:30 | technology | Results: 10
+2025-07-08 10:45:12 | sports     | Results: 8
+
 ### 📥 Installation
 
 ```bash
