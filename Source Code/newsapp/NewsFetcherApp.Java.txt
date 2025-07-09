@@ -1,0 +1,8 @@
+package com.newsapp;
+
+public class NewsFetcherApp {
+    public static void main(String[] args) {
+        NewsFetcherController controller = new NewsFetcherController();
+        controller.run();
+    }
+}

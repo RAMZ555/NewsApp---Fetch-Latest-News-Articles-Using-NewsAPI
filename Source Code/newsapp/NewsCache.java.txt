@@ -1,0 +1,21 @@
+package com.newsapp;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public class NewsCache {
+    private final List<NewsArticle> articles;
+    private final LocalDateTime timestamp = LocalDateTime.now();
+
+    public NewsCache(List<NewsArticle> articles) {
+        this.articles = articles;
+    }
+
+    public List<NewsArticle> getArticles() {
+        return articles;
+    }
+
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(timestamp.plusMinutes(30));
+    }
+}

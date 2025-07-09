@@ -1,0 +1,54 @@
+package com.newsapp;
+
+import java.util.Scanner;
+
+public class NewsFetcherController {
+    private final NewsFetcherService service = new NewsFetcherService();
+    private final Scanner scanner = new Scanner(System.in);
+
+    public void run() {
+        while (true) {
+            System.out.println("\n=== News Fetcher Application ===");
+            System.out.println("1. Search news");
+            System.out.println("2. View search history");
+            System.out.println("3. Exit");
+            System.out.print("Enter your choice: ");
+
+            try {
+                int choice = Integer.parseInt(scanner.nextLine().trim());
+                switch (choice) {
+                    case 1 -> searchFlow();
+                    case 2 -> service.displaySearchHistory();
+                    case 3 -> {
+                        System.out.println("Exiting application...");
+                        return;
+                    }
+                    default -> System.out.println("Invalid choice. Try again.");
+                }
+            } catch (Exception e) {
+                System.err.println("Input error: " + e.getMessage());
+            }
+        }
+    }
+
+    private void searchFlow() {
+        System.out.print("Keyword: ");
+        String keyword = scanner.nextLine().trim();
+        System.out.print("Category (optional): ");
+        String category = scanner.nextLine().trim();
+        System.out.print("Country code (optional): ");
+        String country = scanner.nextLine().trim();
+
+        int page = 1;
+        boolean more = true;
+        while (more) {
+            more = service.searchAndDisplay(keyword, category, country, page, scanner);
+            if (more) {
+                System.out.print("\nNext page? (y/n): ");
+                String next = scanner.nextLine().trim().toLowerCase();
+                if (!next.equals("y")) break;
+                page++;
+            }
+        }
+    }
+}

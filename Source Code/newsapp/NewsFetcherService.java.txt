@@ -1,0 +1,136 @@
+package com.newsapp;
+
+import java.awt.Desktop;
+import java.io.*;
+import java.net.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+public class NewsFetcherService {
+    private static final String API_KEY = "0571636813e345b69d26ebdb44b44845";
+    private static final String BASE_URL = "https://newsapi.org/v2/everything?";
+    private final Map<String, NewsCache> cache = new HashMap<>();
+    private final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    public boolean searchAndDisplay(String keyword, String category, String country, int page, Scanner scanner) {
+        if (keyword.isEmpty()) {
+            System.out.println("Keyword cannot be empty.");
+            return false;
+        }
+
+        String cacheKey = keyword + "|" + category + "|" + country + "|page=" + page;
+        if (cache.containsKey(cacheKey) && !cache.get(cacheKey).isExpired()) {
+            System.out.println("\n=== Cached Results (Page " + page + ") ===");
+            return showArticles(scanner, cache.get(cacheKey).getArticles());
+        }
+
+        try {
+            StringBuilder apiUrl = new StringBuilder(BASE_URL);
+            apiUrl.append("q=").append(URLEncoder.encode(keyword, "UTF-8"));
+            if (!category.isEmpty()) apiUrl.append("&category=").append(category);
+            if (!country.isEmpty()) apiUrl.append("&country=").append(country);
+            apiUrl.append("&language=en&sortBy=publishedAt&pageSize=10&page=").append(page);
+            apiUrl.append("&apiKey=").append(API_KEY);
+
+            HttpURLConnection conn = (HttpURLConnection) new URL(apiUrl.toString()).openConnection();
+            conn.setRequestMethod("GET");
+
+            int code = conn.getResponseCode();
+            if (code != 200) {
+                System.out.println("Error: HTTP " + code);
+                return false;
+            }
+
+            BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+            StringBuilder json = new StringBuilder();
+            String line;
+            while ((line = br.readLine()) != null) json.append(line);
+
+            List<NewsArticle> list = parseArticles(json.toString());
+            if (list.isEmpty()) {
+                System.out.println("No results found.");
+                return false;
+            }
+
+            cache.put(cacheKey, new NewsCache(list));
+            logSearch(keyword, list.size());
+            return showArticles(scanner, list);
+
+        } catch (Exception e) {
+            System.err.println("Fetch error: " + e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean showArticles(Scanner scanner, List<NewsArticle> articles) {
+        for (int i = 0; i < articles.size(); i++) {
+            NewsArticle a = articles.get(i);
+            System.out.println("\n[" + (i + 1) + "] " + a.getTitle());
+            System.out.println("Source: " + a.getSource());
+            System.out.println("Published: " + a.getFormattedDate());
+            System.out.println("Description: " + a.getDescription());
+            System.out.println("URL: " + a.getUrl());
+        }
+
+        System.out.print("\nOpen article (0 to skip): ");
+        try {
+            int choice = Integer.parseInt(scanner.nextLine().trim());
+            if (choice > 0 && choice <= articles.size()) {
+                Desktop.getDesktop().browse(new URI(articles.get(choice - 1).getUrl()));
+            }
+        } catch (Exception e) {
+            System.out.println("Invalid input.");
+        }
+
+        return true;
+    }
+
+    private List<NewsArticle> parseArticles(String json) {
+        List<NewsArticle> list = new ArrayList<>();
+        try {
+            String[] items = json.split(""articles":\[")[1].split("}]")[0].split("},\{");
+            for (String item : items) {
+                String title = extract(item, "title");
+                String desc = extract(item, "description");
+                String url = extract(item, "url");
+                String date = extract(item, "publishedAt");
+                String source = extract(item.split(""source":\{")[1], "name");
+                list.add(new NewsArticle(title, desc, url, date, source));
+            }
+        } catch (Exception e) {
+            System.err.println("Parsing error: " + e.getMessage());
+        }
+        return list;
+    }
+
+    private String extract(String json, String key) {
+        try {
+            String[] split = json.split(""" + key + "":");
+            if (split.length < 2) return "N/A";
+            String val = split[1].split(",")[0];
+            if (val.startsWith(""")) return val.substring(1, val.endsWith(""") ? val.length() - 1 : val.length());
+            return val;
+        } catch (Exception e) {
+            return "N/A";
+        }
+    }
+
+    public void displaySearchHistory() {
+        try (BufferedReader reader = new BufferedReader(new FileReader("search_history.log"))) {
+            System.out.println("\n=== Search History ===");
+            String line;
+            while ((line = reader.readLine()) != null) System.out.println(line);
+        } catch (IOException e) {
+            System.out.println("No history found.");
+        }
+    }
+
+    private void logSearch(String keyword, int count) {
+        try (FileWriter fw = new FileWriter("search_history.log", true)) {
+            fw.write(LocalDateTime.now().format(FORMATTER) + " | " + keyword + " | " + count + "\n");
+        } catch (IOException e) {
+            System.err.println("Could not log search.");
+        }
+    }
+}
