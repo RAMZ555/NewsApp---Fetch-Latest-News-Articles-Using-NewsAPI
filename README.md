@@ -74,7 +74,9 @@ Edit
 Enter your choice: 1
 
 Enter a keyword to search news (e.g., Sports, Business, Technology): technology
+
 Enter category (optional): technology
+
 Enter country code (e.g., us, in) (optional): us
 
 === News Results (Page 1) ===
